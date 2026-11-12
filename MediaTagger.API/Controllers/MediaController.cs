@@ -79,6 +79,34 @@ public class MediaController : ControllerBase
         return Ok(new RenameResponse { Path = outcome.Path!, Merged = outcome.Merged, Settings = outcome.Settings! });
     }
 
+    /// <summary>Moves a file or folder into another folder. A name clash on a folder waits for <c>merge</c>.</summary>
+    [HttpPost("move")]
+    public ActionResult<RenameResponse> Move([FromBody] MoveRequest request)
+    {
+        var outcome = _rename.MoveInto(request.Path, request.Destination ?? "", request.Merge);
+        if (outcome.Code == "merge") return Conflict(new { code = "merge", destination = outcome.Destination });
+        if (outcome.Code == "exists") return Conflict(new { code = "exists", name = outcome.Name });
+        if (outcome.Code == "missing") return NotFound();
+        if (outcome.Code != null) return BadRequest("Invalid move");
+        return Ok(new RenameResponse { Path = outcome.Path!, Merged = outcome.Merged, Settings = outcome.Settings! });
+    }
+
+    /// <summary>Sorts the photos and videos under a folder into year/month, or 0000 when no date can be found.</summary>
+    [HttpPost("sort-by-date")]
+    public ActionResult<SortByDateResponse> SortByDate([FromBody] SortByDateRequest request)
+    {
+        var outcome = _rename.SortByDate(request.Path);
+        if (outcome.Code == "missing") return NotFound();
+        if (outcome.Code != null) return BadRequest("Invalid folder");
+        return Ok(new SortByDateResponse
+        {
+            Moved = outcome.Moved,
+            Skipped = outcome.Skipped,
+            Undated = outcome.Undated,
+            Settings = outcome.Settings!
+        });
+    }
+
     [HttpDelete("file")]
     public ActionResult DeleteFile([FromQuery] string filePath)
     {
@@ -227,6 +255,7 @@ public class MediaController : ControllerBase
             ".m4v"            => "video/mp4",
             ".wmv"            => "video/x-ms-wmv",
             ".mts" or ".m2ts" => "video/mp2t",
+            ".3gp"            => "video/3gpp",
             _                 => "video/mp4"
         };
 

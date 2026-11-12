@@ -5,6 +5,8 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline'
+import DriveFileMoveIcon from '@mui/icons-material/DriveFileMove'
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import { FolderNode } from '../api/client'
 
 interface Props {
@@ -12,10 +14,12 @@ interface Props {
   selectedPath: string
   onSelect: (path: string) => void
   onRename: (node: FolderNode) => void
+  onMove: (node: FolderNode) => void
+  onSort: (node: FolderNode) => void
   depth?: number
 }
 
-export function FolderTreeNode({ node, selectedPath, onSelect, onRename, depth = 0 }: Props) {
+export function FolderTreeNode({ node, selectedPath, onSelect, onRename, onMove, onSort, depth = 0 }: Props) {
   const [expanded, setExpanded] = useState(depth === 0)
   const isSelected = selectedPath === node.path
   const hasChildren = node.children.length > 0
@@ -34,7 +38,7 @@ export function FolderTreeNode({ node, selectedPath, onSelect, onRename, depth =
           bgcolor: isSelected ? 'primary.main' : 'transparent',
           color: isSelected ? 'primary.contrastText' : 'text.primary',
           '&:hover': { bgcolor: isSelected ? 'primary.dark' : 'action.hover' },
-          '&:hover .rename-btn': { opacity: 1 },
+          '&:hover .row-btn': { opacity: 1 },
           transition: 'background-color 0.15s'
         }}
         onClick={() => onSelect(node.path)}
@@ -61,15 +65,35 @@ export function FolderTreeNode({ node, selectedPath, onSelect, onRename, depth =
         >
           {node.name}
         </Typography>
-        <Tooltip title="Перейменувати папку">
+        <Tooltip title="Перемістити папку">
           <IconButton
-            className="rename-btn"
+            className="row-btn"
             size="small"
-            onClick={e => { e.stopPropagation(); onRename(node) }}
+            onClick={e => { e.stopPropagation(); onMove(node) }}
             sx={{
               ml: 'auto', p: 0.25, opacity: isSelected ? 1 : 0,
               color: isSelected ? 'inherit' : 'text.secondary'
             }}
+          >
+            <DriveFileMoveIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Розкласти за датою (рік/місяць)">
+          <IconButton
+            className="row-btn"
+            size="small"
+            onClick={e => { e.stopPropagation(); onSort(node) }}
+            sx={{ p: 0.25, opacity: isSelected ? 1 : 0, color: isSelected ? 'inherit' : 'text.secondary' }}
+          >
+            <CalendarMonthIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Перейменувати папку">
+          <IconButton
+            className="row-btn"
+            size="small"
+            onClick={e => { e.stopPropagation(); onRename(node) }}
+            sx={{ p: 0.25, opacity: isSelected ? 1 : 0, color: isSelected ? 'inherit' : 'text.secondary' }}
           >
             <DriveFileRenameOutlineIcon sx={{ fontSize: 16 }} />
           </IconButton>
@@ -85,6 +109,8 @@ export function FolderTreeNode({ node, selectedPath, onSelect, onRename, depth =
               selectedPath={selectedPath}
               onSelect={onSelect}
               onRename={onRename}
+              onMove={onMove}
+              onSort={onSort}
               depth={depth + 1}
             />
           ))}

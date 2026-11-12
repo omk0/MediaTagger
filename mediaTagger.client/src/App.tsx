@@ -24,12 +24,13 @@ import { LibraryPanel } from './components/LibraryPanel'
 import { LightboxViewer } from './components/LightboxViewer'
 import { DeleteFilesDialog } from './components/DeleteFilesDialog'
 import { RenameDialog, RenameTarget } from './components/RenameDialog'
+import { MoveDialog, MoveTarget, SortFolderDialog } from './components/MoveDialog'
 import { FacesPanel } from './components/FacesPanel'
 import { PlacesPanel } from './components/PlacesPanel'
 import { SettingsDialog } from './components/SettingsDialog'
 import {
   mediaApi, settingsApi, facesApi, apiIsLocal, AppSettings, ScanProgress, RenameResponse,
-  MediaFile, FileTags, FolderNode, AllTagsResponse, SearchRequest, BulkTagsRequest,
+  MediaFile, FileTags, FolderNode, AllTagsResponse, SearchRequest, BulkTagsRequest, SortByDateResponse,
   checkServer, unlockServer, onAccessDenied, readAccessKey
 } from './api/client'
 import { sortFiles, groupFiles, SortField, SortDir, GroupField } from './utils/mediaOrder'
@@ -120,6 +121,8 @@ export default function App() {
   const [recentAnchor, setRecentAnchor] = useState<null | HTMLElement>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<RenameTarget | null>(null)
+  const [moveTarget, setMoveTarget] = useState<MoveTarget | null>(null)
+  const [sortFolder, setSortFolder] = useState<{ path: string; name: string } | null>(null)
   // Browsing a folder includes everything below it unless the user says otherwise.
   const [recursive, setRecursive] = useState(true)
   const [scan, setScan] = useState<ScanProgress | null>(null)
@@ -373,21 +376,42 @@ export default function App() {
     const nextFolder = mapStoredPath(currentFolder, oldPath, to)
     setRootPath(nextRoot)
     setCurrentFolder(nextFolder)
+    const openMoved = lightboxFile != null && mapStoredPath(lightboxFile.filePath, oldPath, to) !== lightboxFile.filePath
+    const openNow = openMoved && lightboxFile ? mapStoredPath(lightboxFile.filePath, oldPath, to) : ''
+    const openDir = openNow.replace(/[\\/][^\\/]+$/, '')
+    const openStillListed = !openMoved || (recursive
+      ? folderKey(openDir) === folderKey(nextFolder) || folderKey(openDir).startsWith(folderKey(nextFolder) + '\\')
+      : folderKey(openDir) === folderKey(nextFolder))
+    const folderToLoad = openStillListed ? nextFolder : openDir
+    if (!openStillListed) setCurrentFolder(openDir)
     setLightboxFile(prev => {
       if (!prev) return prev
       const mapped = mapStoredPath(prev.filePath, oldPath, to)
       if (mapped === prev.filePath) return prev
       return { ...prev, filePath: mapped, fileName: mapped.split(/[/\\]/).pop() || prev.fileName }
     })
-    const selected = renameTarget?.kind === 'file' ? [mapStoredPath(renameTarget.path, oldPath, to)] : []
+    const movedFile = renameTarget?.kind === 'file' ? renameTarget.path
+      : moveTarget?.kind === 'file' ? moveTarget.path : ''
+    const selected = movedFile ? [mapStoredPath(movedFile, oldPath, to)] : []
     if (nextRoot) loadFolderTree(nextRoot).catch(() => {})
-    await loadFiles(nextFolder)
+    await loadFiles(folderToLoad)
     if (selected.length) setSelectedPaths(selected)
     const roots = result.settings.libraryFolders?.length
       ? result.settings.libraryFolders
       : (nextRoot ? [nextRoot] : [])
     loadAllTags(roots)
     facesApi.scan(roots).catch(() => {})
+    markTagsChanged()
+  }
+
+  const handleSorted = (result: SortByDateResponse) => {
+    setSettings(result.settings)
+    setSortFolder(null)
+    setLightboxFile(null)
+    if (rootPath) loadFolderTree(rootPath).catch(() => {})
+    if (currentFolder) void loadFiles(currentFolder)
+    const roots = result.settings.libraryFolders?.length ? result.settings.libraryFolders : libraryRoots
+    loadAllTags(roots)
     markTagsChanged()
   }
 
@@ -660,7 +684,9 @@ export default function App() {
             {folderTree ? (
               <FolderTreeNode node={folderTree} selectedPath={currentFolder}
                 onSelect={path => { setCurrentFolder(path); loadFiles(path) }}
-                onRename={node => setRenameTarget({ path: node.path, name: node.name, kind: 'folder' })} />
+                onRename={node => setRenameTarget({ path: node.path, name: node.name, kind: 'folder' })}
+                onMove={node => setMoveTarget({ path: node.path, name: node.name, kind: 'folder' })}
+                onSort={node => setSortFolder({ path: node.path, name: node.name })} />
             ) : (
               <Typography variant="caption" color="text.secondary" sx={{ p: 2, display: 'block' }}>
                 Оберіть кореневу папку з медіафайлами
@@ -741,6 +767,7 @@ export default function App() {
                   }}
                   onDelete={file => setDeleteRequest([file])}
                   onRename={file => setRenameTarget({ path: file.filePath, name: file.fileName, kind: 'file' })}
+                  onMove={file => setMoveTarget({ path: file.filePath, name: file.fileName, kind: 'file' })}
                 />
               </Box>
 
@@ -799,13 +826,19 @@ export default function App() {
         onOpenTags={f => { setSelectedPaths([f.filePath]); setLightboxFile(null) }}
         onDelete={f => setDeleteRequest([f])}
         onRename={f => setRenameTarget({ path: f.filePath, name: f.fileName, kind: 'file' })}
+        onMove={f => setMoveTarget({ path: f.filePath, name: f.fileName, kind: 'file' })}
         closeOnOutsideClick={!!settings.closeViewerOnOutsideClick}
-        paused={!!deleteRequest || !!renameTarget}
+        paused={!!deleteRequest || !!renameTarget || !!moveTarget || !!sortFolder}
       />
 
       <DeleteFilesDialog files={deleteRequest} onCancel={() => setDeleteRequest(null)} onDeleted={handleDeleted} />
 
       <RenameDialog target={renameTarget} onCancel={() => setRenameTarget(null)} onRenamed={handleRenamed} />
+
+      <MoveDialog target={moveTarget} onCancel={() => setMoveTarget(null)}
+        onMoved={(oldPath, result) => { setMoveTarget(null); void handleRenamed(oldPath, result) }} />
+
+      <SortFolderDialog folder={sortFolder} onCancel={() => setSortFolder(null)} onSorted={handleSorted} />
 
       <SettingsDialog open={settingsOpen} settings={settings} people={allTags.people}
         onChange={saveSettings} onClose={() => setSettingsOpen(false)} />
