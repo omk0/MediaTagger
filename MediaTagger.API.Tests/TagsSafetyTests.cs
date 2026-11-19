@@ -186,3 +186,25 @@ public class TagsSafetyTests : IDisposable
         Assert.Equal(new[] { path }, Directory.GetFiles(_dir, "x.json*"));
     }
 }
+
+public class BackupScheduleTests
+{
+    private static readonly DateTime Now = new(2026, 11, 19, 12, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public void Switched_off_means_no_automatic_copy_ever()
+    {
+        Assert.False(TagBackupService.IsDue(null, 0, Now));
+        Assert.False(TagBackupService.IsDue(Now.AddDays(-400), 0, Now));
+    }
+
+    [Fact]
+    public void A_copy_is_owed_once_the_last_one_is_old_enough_or_there_is_none()
+    {
+        Assert.True(TagBackupService.IsDue(null, 7, Now));
+        Assert.False(TagBackupService.IsDue(Now.AddDays(-6), 7, Now));
+        Assert.True(TagBackupService.IsDue(Now.AddDays(-7), 7, Now));
+        Assert.False(TagBackupService.IsDue(Now.AddHours(-23), 1, Now));
+        Assert.True(TagBackupService.IsDue(Now.AddDays(-1), 1, Now));
+    }
+}

@@ -57,7 +57,8 @@ public class SettingsService
             CloseViewerOnOutsideClick = current.CloseViewerOnOutsideClick,
             DoubleClickFullscreen = current.DoubleClickFullscreen,
             CopyPhotoOnCtrlC = current.CopyPhotoOnCtrlC,
-            ThumbnailCacheGb = current.ThumbnailCacheGb
+            ThumbnailCacheGb = current.ThumbnailCacheGb,
+            BackupEveryDays = current.BackupEveryDays
         };
         if (next.DefaultFolder == current.DefaultFolder
             && next.RecentFolders.SequenceEqual(current.RecentFolders)

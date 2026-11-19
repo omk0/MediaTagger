@@ -185,6 +185,8 @@ export interface AppSettings {
   copyPhotoOnCtrlC?: boolean
   /** Disk the preview cache may use, in GB; absent means the server's default. */
   thumbnailCacheGb?: number
+  /** Days between automatic tag copies; 0 is never. Absent means the server's default. */
+  backupEveryDays?: number
 }
 /** What the face scan runs on. */
 export interface FaceDeviceInfo {

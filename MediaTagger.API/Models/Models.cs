@@ -24,6 +24,8 @@ public class AppSettings
     public bool CopyPhotoOnCtrlC { get; set; } = true;
     /// <summary>How much disk the preview cache may use, in GB. The least recently shown previews go first.</summary>
     public int ThumbnailCacheGb { get; set; } = 10;
+    /// <summary>How often the tags are zipped into the cache folder, in days; 0 turns the automatic copy off.</summary>
+    public int BackupEveryDays { get; set; } = 7;
 }
 
 /// <summary>How much of a video face analysis looks at; each step costs more time per video.</summary>

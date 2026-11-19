@@ -5,14 +5,13 @@ namespace MediaTagger.API.Services;
 
 /// <summary>
 /// Years of tagging live in small <c>_tags.json</c> files next to the photos and in the
-/// face database. Once a day (and on request) both are zipped into the cache folder,
-/// and only the newest few copies are kept.
+/// face database. Every few days (a setting, or never) and on request both are zipped
+/// into the cache folder, and only the newest few copies are kept.
 /// </summary>
 public class TagBackupService : BackgroundService
 {
     private const string FolderName = "backups";
     private const int KeepCopies = 14;
-    private static readonly TimeSpan Interval = TimeSpan.FromHours(24);
     // The app is usually opened to work, not to wait: the first copy can come a little later.
     private static readonly TimeSpan StartDelay = TimeSpan.FromMinutes(2);
 
@@ -59,11 +58,12 @@ public class TagBackupService : BackgroundService
         catch (OperationCanceledException) { /* shutting down */ }
     }
 
-    private bool IsDue()
-    {
-        var newest = Existing().FirstOrDefault();
-        return newest == null || DateTime.UtcNow - newest.LastWriteTimeUtc >= Interval;
-    }
+    private bool IsDue() =>
+        IsDue(Existing().FirstOrDefault()?.LastWriteTimeUtc, _settings.Get().BackupEveryDays, DateTime.UtcNow);
+
+    /// <summary>Whether an automatic copy is owed: never when switched off, otherwise once the last one is old enough.</summary>
+    internal static bool IsDue(DateTime? newestUtc, int everyDays, DateTime nowUtc) =>
+        everyDays > 0 && (newestUtc == null || nowUtc - newestUtc.Value >= TimeSpan.FromDays(everyDays));
 
     private List<FileInfo> Existing()
     {

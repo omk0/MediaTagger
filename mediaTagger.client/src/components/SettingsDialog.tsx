@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography,
   RadioGroup, FormControlLabel, Radio, Box, Slider, Switch, Divider, CircularProgress,
-  Autocomplete, TextField
+  Autocomplete, TextField, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material'
 import { AppSettings, VideoFaceMode, FaceDeviceInfo, facesApi, settingsApi } from '../api/client'
 import { ServerConnect } from './ServerConnect'
@@ -254,9 +254,19 @@ export function SettingsDialog({ open, settings, people, onChange, onClose }: Pr
 
         <Typography variant="subtitle2">Копія тегів</Typography>
         <Typography variant="caption" color="text.secondary" display="block" lineHeight={1.4} sx={{ mt: 0.5 }}>
-          Раз на добу всі файли тегів і база облич пакуються в архів у каталозі кешу API, останніх 14 копій
-          лишається. Цією кнопкою копію можна зробити зараз.
+          Усі файли тегів і база облич пакуються в архів у каталозі кешу API, останніх 14 копій лишається.
+          Автоматично це відбувається з обраною частотою, а кнопкою копію можна зробити зараз.
         </Typography>
+        <FormControl size="small" sx={{ mt: 1, minWidth: 200 }}>
+          <InputLabel id="backup-every">Автоматична копія</InputLabel>
+          <Select labelId="backup-every" label="Автоматична копія" value={settings.backupEveryDays ?? 7}
+            onChange={e => save({ backupEveryDays: Number(e.target.value) })}>
+            <MenuItem value={0}>Ніколи</MenuItem>
+            <MenuItem value={1}>Щодня</MenuItem>
+            <MenuItem value={7}>Раз на тиждень</MenuItem>
+            <MenuItem value={30}>Раз на місяць</MenuItem>
+          </Select>
+        </FormControl>
         <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
           <Button size="small" variant="outlined" disabled={backup.state === 'working'} onClick={makeBackup}>
             Зробити копію зараз
